@@ -1,4 +1,4 @@
-from src.constants import EMPTY , BLACK , WHITE
+from src.constants import EMPTY , BLACK , WHITE , SCORE , WIN_SCORE
 from typing import List , Tuple
 from dataclasses import dataclass , field
 
@@ -46,10 +46,10 @@ class BoardLine:
                 continue
 
             if black_count > 0:
-                black_score += 1
+                black_score += SCORE[black_count]
 
-            if white_count > 0:
-                white_score += 1
+            elif white_count > 0:
+                white_score += SCORE[white_count]
 
         self.evaluation = [black_score, white_score]
 
@@ -207,6 +207,12 @@ class Board:
 
         return self.rows[index]
 
+    def get_specific_column(self, index: int) -> BoardLine:
+        if not 0 <= index < self.size:
+            raise IndexError("Column index out of range.")
+
+        return self.columns[index]
+
     def get_specific_diagonal(self, index: int) -> BoardLine:
         if not 0 <= index < len(self.diagonals):
             raise IndexError("Diagonal index out of range.")
@@ -231,6 +237,18 @@ class Board:
                 self.size
             )
 
+    def remove_piece(self, node: int):
+        row, col = self._from_node(node)
+
+        if self.matrix[row][col] == EMPTY:
+            raise ValueError("Cell is already empty.")
+
+        self.matrix[row][col] = EMPTY
+
+        for line in self.cell_to_lines[node]:
+            line.update_evaluation(self.matrix, self.size)
+
+
     def get_evaluation(self) -> List[int]:
         black_score = 0
         white_score = 0
@@ -248,6 +266,61 @@ class Board:
 
         return [black_score, white_score]
 
+    def _line_has_five(self, line: BoardLine, player: int) -> bool:
+        consecutive = 0
+        for node in line.nodes:
+
+            row, col = self._from_node(node)
+
+            if self.matrix[row][col] == player:
+                consecutive += 1
+
+                if consecutive >= 5:
+                    return True
+
+            else:
+                consecutive = 0
+        return False
+
+    def has_winner(self, player: int) -> bool:
+
+        for line in self.rows:
+            if self._line_has_five(line, player):
+                return True
+
+        for line in self.columns:
+            if self._line_has_five(line, player):
+                return True
+
+        for line in self.diagonals:
+            if self._line_has_five(line, player):
+                return True
+
+        return False
+
+    def is_full(self) -> bool:
+        for row in self.matrix:
+            for cell in row:
+                if cell == EMPTY:
+                    return False
+        return True
+
+    def is_terminal(self) -> bool:
+        return self.has_winner(BLACK) or self.has_winner(WHITE) or self.is_full()
+
+    def evaluate(self) -> float:
+        if self.has_winner(BLACK):
+            return WIN_SCORE
+
+        if self.has_winner(WHITE):
+            return -WIN_SCORE
+
+        if self.is_full():
+            return 0
+
+        black_score, white_score = self.get_evaluation()
+
+        return black_score - white_score
 
     def display(self):
         print()
