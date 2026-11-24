@@ -57,7 +57,6 @@ class BoardLine:
         return self.evaluation.copy()
 
 
-
 class Board:
     def __init__(self, size: int):
         if not 5 <= size <= 18:
@@ -73,6 +72,8 @@ class Board:
         self.columns: List[BoardLine] = []
         self.diagonals: List[BoardLine] = []
         self.cell_to_lines: dict[int, List[BoardLine]] = {}
+        self.empty_nodes: set[int] = set(range(size * size))
+        self.non_empty_nodes: set[int] = set()
 
         self._build_lines()
 
@@ -219,6 +220,9 @@ class Board:
 
         return self.diagonals[index]
 
+    def is_empty(self) -> bool:
+        return len(self.non_empty_nodes) == 0 and len(self.empty_nodes) == self.size * self.size
+
 
     def set_piece(self, node: int, player: int):
 
@@ -230,6 +234,9 @@ class Board:
             raise ValueError("Cell is already occupied.")
 
         self.matrix[row][col] = player
+        empty_node = self._to_node(row, col)
+        self.empty_nodes.discard(empty_node)
+        self.non_empty_nodes.add(empty_node)
 
         for line in self.cell_to_lines[node]:
             line.update_evaluation(
@@ -244,6 +251,9 @@ class Board:
             raise ValueError("Cell is already empty.")
 
         self.matrix[row][col] = EMPTY
+        empty_node = self._to_node(row, col)
+        self.empty_nodes.add(empty_node)
+        self.non_empty_nodes.discard(empty_node)
 
         for line in self.cell_to_lines[node]:
             line.update_evaluation(self.matrix, self.size)

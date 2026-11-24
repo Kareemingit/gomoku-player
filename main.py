@@ -1,25 +1,28 @@
-# import src.ui.uiTest as ui
-# import src.api.apiTest as api
-# import src.game.gameTest as game
-# import src.player.playerTest as player
-# print("test")
-# ui.uiTestFunc(5)
-# api.apiTestFunc(15)
-# game.gameTestFunc(20)
-# player.playerTestFunc(17)
-
-from src.game import Board
+from src.game.Board import Board
 from src.constants import EMPTY , WHITE , BLACK
-board = Board.Board(15)
+from src.player.SmartPlayer import SmartPlayer
 
-board.display()
+def main():
+    board = Board(15)
+    player1 = SmartPlayer(BLACK, 2)
+    player2 = SmartPlayer(WHITE, 2)
 
-board.set_piece(112, BLACK)
-board.set_piece(113 , WHITE)
-board.set_piece(114, BLACK)
-board.set_piece(12 , WHITE)
-board.set_piece(115, BLACK)
+    current_player = player1
+    while True:
+        move = current_player.get_best_move(board)
+        if move is None:
+            print("Game over! It's a draw.")
+            break
 
-board.display()
+        board.set_piece(move, current_player.player)
+        print(f"Player {current_player.player} moves to {move}.")
+        board.display()
 
-print("Evaluation:", board.get_evaluation())
+        if board.has_winner(current_player.player):
+            print(f"Player {current_player.player} wins!")
+            break
+
+        current_player = player2 if current_player == player1 else player1
+
+
+main()
