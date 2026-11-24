@@ -1,7 +1,6 @@
 from src.constants import BLACK, WHITE, EMPTY
 import src.game.Board as Board
 from src.game.Board import BoardLine as BoardLine
-import random
 
 class SmartPlayer:
     def __init__(self, player: int, thinking_depth: int):
@@ -14,12 +13,12 @@ class SmartPlayer:
         self.player = player
         self.depth = thinking_depth
         self.opponent = WHITE if player == BLACK else BLACK
-        self.candidate_moves_types = {
-            "center": 0,
-            "winning": 1,
-            "threat": 2,
-            "nearby": 3,
-        }
+
+    def _would_win(self, board: Board.Board, node: int, player: int) -> bool:
+        board.set_piece(node , player)
+        res = board.has_winner(player)
+        board.remove_piece(node)
+        return res
 
     def _get_center_moves(self, board: Board.Board):
         size = board.size
@@ -36,39 +35,6 @@ class SmartPlayer:
             board._to_node(center, center)
         ]
 
-    def _would_win(self, board: Board.Board, node: int, player: int) -> bool:
-        row, col = board._from_node(node)
-        directions = [
-            (0, 1),
-            (1, 0),
-            (1, 1),
-            (1, -1),
-        ]
-
-        for dr, dc in directions:
-            count = 1
-            
-            r = row + dr
-            c = col + dc
-
-            while (0 <= r < board.size and 0 <= c < board.size and board.matrix[r][c] == player):
-                count += 1
-                r += dr
-                c += dc
-
-            r = row - dr
-            c = col - dc
-
-            while (0 <= r < board.size and 0 <= c < board.size and board.matrix[r][c] == player):
-                count += 1
-                r -= dr
-                c -= dc
-
-            if count >= 5:
-                return True
-
-        return False
-
     def _get_winning_moves(self,board: Board.Board,player: int,candidate_nodes=None):
         if candidate_nodes is None:
             candidate_nodes = self._get_nearby_moves(board,distance=1)
@@ -80,44 +46,6 @@ class SmartPlayer:
                 winning_moves.append(node)
 
         return winning_moves
-
-    def _get_promising_window_moves(self, board: Board.Board, player: int):
-        candidate_moves = set()
-
-        for line in board.rows + board.columns + board.diagonals:
-            if len(line.nodes) < 5:
-                continue
-
-            for start in range(len(line.nodes) - 4):
-                window = line.nodes[start:start + 5]
-
-                black_count = 0
-                white_count = 0
-                empty_nodes = []
-
-                for node in window:
-                    row, col = board._from_node(node)
-                    value = board.matrix[row][col]
-                    if value == BLACK:
-                        black_count += 1
-                    elif value == WHITE:
-                        white_count += 1
-                    else:
-                        empty_nodes.append(node)
-
-                if black_count > 0 and white_count > 0:
-                    continue
-
-                if player == BLACK:
-                    player_count = black_count
-                else:
-                    player_count = white_count
-
-                if player_count == 0:
-                    continue
-
-                candidate_moves.update(empty_nodes)
-        return candidate_moves
 
     def _get_nearby_moves(self, board: Board.Board, distance=2):
         candidates = set()
@@ -138,9 +66,25 @@ class SmartPlayer:
                         continue
 
                     node = board._to_node(new_row,new_col)
-
                     candidates.add(node)
+
         return candidates
+
+    def _order_moves(self,board: Board.Board,candidate_moves: list[int], player: int) -> list[int]:
+        scored_moves = []
+        for move in candidate_moves:
+            board.set_piece(move, player)
+
+            try:
+                score = board.evaluate()
+            finally:
+                board.remove_piece(move)
+
+            scored_moves.append((score, move))
+
+        scored_moves.sort(key=lambda item: item[0],reverse=(player == BLACK))
+
+        return [move for score, move in scored_moves]
 
     def get_candidate_moves(self, board: Board.Board , player: int):
         if board.is_empty():
@@ -155,22 +99,20 @@ class SmartPlayer:
 
         if opponent_winning_moves:
             return opponent_winning_moves
-
-        candidate_moves = self._get_promising_window_moves(board, player)
-
-        candidate_moves.update(
-            self._get_nearby_moves(board , 2)
-        )
+        
+        candidate_moves = self._get_nearby_moves(board , 1)
 
         return list(candidate_moves)
 
-    #minmax algorithm with alpha-beta pruning
+
     def _minimax(self, board: Board.Board, alpha: int, beta: int, depth: int, maximizing_player: bool) -> float:
         if depth == 0 or board.is_terminal():
             return board.evaluate()
 
         current_player = self.player if maximizing_player else self.opponent
-        candidate_moves = self.get_candidate_moves(board, current_player)
+
+        candidate_moves = self._order_moves(board , self.get_candidate_moves(board, current_player) , current_player)
+
         if maximizing_player:
             max_value = -float('inf')
             for move in candidate_moves:
@@ -200,12 +142,15 @@ class SmartPlayer:
             return min_value
         
     def get_best_move(self, board: Board.Board) -> int:
-        candidate_moves = self.get_candidate_moves(board , self.player)
+        print(f"Getting best move for player {self.player} with depth {self.depth}")
         if not candidate_moves:
             return None
-
+        
+        print(f"Minmax:Evaluating moves for player {self.player}...")
+        candidate_moves = self._order_moves(board , self.get_candidate_moves(board , self.player) , self.player)
+        print(f"Minmax:Candidate moves: {candidate_moves}")
+        print(f"Minmax:Candidate moves Count:" , {len(candidate_moves)})
         best_move = candidate_moves[0]
-
         if self.player == BLACK:
             best_score = -float('inf')
             for move in candidate_moves:

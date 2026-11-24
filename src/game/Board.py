@@ -10,6 +10,8 @@ class BoardLine:
     nodes: List[int]
     node_set: set[int] = field(init=False)
     evaluation: List[int] = field(default_factory=lambda: [0, 0])
+    is_a_winning_line: bool = field(default=False)
+    who_is_winning: int = field(default=EMPTY)
 
     def __post_init__(self):
         self.node_set = set(self.nodes)
@@ -20,6 +22,9 @@ class BoardLine:
     def update_evaluation(self, board_matrix: List[List[int]], size: int):
         black_score = 0
         white_score = 0
+
+        self.is_a_winning_line = False
+        self.who_is_winning = EMPTY
 
         if len(self.nodes) < 5:
             self.evaluation = [0, 0]
@@ -46,9 +51,15 @@ class BoardLine:
                 continue
 
             if black_count > 0:
+                if(black_count == 5):
+                    self.is_a_winning_line = True
+                    self.who_is_winning = BLACK
                 black_score += SCORE[black_count]
 
             elif white_count > 0:
+                if(white_count == 5):
+                    self.is_a_winning_line = True
+                    self.who_is_winning = WHITE
                 white_score += SCORE[white_count]
 
         self.evaluation = [black_score, white_score]
@@ -59,8 +70,8 @@ class BoardLine:
 
 class Board:
     def __init__(self, size: int):
-        if not 5 <= size <= 18:
-            raise ValueError("Board size must be between 5 and 18.")
+        if not 5 <= size <= 15:
+            raise ValueError("Board size must be between 5 and 15.")
              
         self.size = size
 
@@ -71,9 +82,12 @@ class Board:
         self.rows: List[BoardLine] = []
         self.columns: List[BoardLine] = []
         self.diagonals: List[BoardLine] = []
+
         self.cell_to_lines: dict[int, List[BoardLine]] = {}
         self.empty_nodes: set[int] = set(range(size * size))
         self.non_empty_nodes: set[int] = set()
+        self.black_winning_lines = 0
+        self.white_winning_lines = 0
 
         self._build_lines()
 
@@ -185,6 +199,27 @@ class Board:
     def _from_node(self, node: int) -> Tuple[int, int]:
         return divmod(node, self.size)
 
+    def _add_line_to_cache(self, line: BoardLine):
+        if line.who_is_winning == BLACK:
+            self.black_winning_lines += 1
+
+        elif line.who_is_winning == WHITE:
+            self.white_winning_lines += 1
+
+    def _remove_line_from_cache(self, line: BoardLine):
+        if line.who_is_winning == BLACK:
+            self.black_winning_lines -= 1
+
+        elif line.who_is_winning == WHITE:
+            self.white_winning_lines -= 1
+
+    def _update_line(self, line: BoardLine):
+        self._remove_line_from_cache(line)
+
+        line.update_evaluation(self.matrix, self.size)
+
+        self._add_line_to_cache(line)
+
 
     def get_row(self, node: int) -> BoardLine:
         row, _ = self._from_node(node)
@@ -220,12 +255,15 @@ class Board:
 
         return self.diagonals[index]
 
+
     def is_empty(self) -> bool:
         return len(self.non_empty_nodes) == 0 and len(self.empty_nodes) == self.size * self.size
 
+    def is_full(self) -> bool:
+        len(self.empty_nodes) == 0
+
 
     def set_piece(self, node: int, player: int):
-
         if player not in (BLACK, WHITE):
             raise ValueError("Player must be BLACK or WHITE.")
 
@@ -235,14 +273,11 @@ class Board:
 
         self.matrix[row][col] = player
         empty_node = self._to_node(row, col)
-        self.empty_nodes.discard(empty_node)
+        self.empty_nodes.remove(empty_node)
         self.non_empty_nodes.add(empty_node)
 
         for line in self.cell_to_lines[node]:
-            line.update_evaluation(
-                self.matrix,
-                self.size
-            )
+            self._update_line(line)
 
     def remove_piece(self, node: int):
         row, col = self._from_node(node)
@@ -253,10 +288,10 @@ class Board:
         self.matrix[row][col] = EMPTY
         empty_node = self._to_node(row, col)
         self.empty_nodes.add(empty_node)
-        self.non_empty_nodes.discard(empty_node)
+        self.non_empty_nodes.remove(empty_node)
 
         for line in self.cell_to_lines[node]:
-            line.update_evaluation(self.matrix, self.size)
+            self._update_line(line)
 
 
     def get_evaluation(self) -> List[int]:
@@ -276,44 +311,12 @@ class Board:
 
         return [black_score, white_score]
 
-    def _line_has_five(self, line: BoardLine, player: int) -> bool:
-        consecutive = 0
-        for node in line.nodes:
-
-            row, col = self._from_node(node)
-
-            if self.matrix[row][col] == player:
-                consecutive += 1
-
-                if consecutive >= 5:
-                    return True
-
-            else:
-                consecutive = 0
-        return False
 
     def has_winner(self, player: int) -> bool:
-
-        for line in self.rows:
-            if self._line_has_five(line, player):
-                return True
-
-        for line in self.columns:
-            if self._line_has_five(line, player):
-                return True
-
-        for line in self.diagonals:
-            if self._line_has_five(line, player):
-                return True
-
-        return False
-
-    def is_full(self) -> bool:
-        for row in self.matrix:
-            for cell in row:
-                if cell == EMPTY:
-                    return False
-        return True
+        if(player == BLACK):
+            return self.black_winning_lines > 0
+        else:
+            return self.white_winning_lines > 0
 
     def is_terminal(self) -> bool:
         return self.has_winner(BLACK) or self.has_winner(WHITE) or self.is_full()
@@ -354,3 +357,4 @@ class Board:
 
             print()
         print()
+
