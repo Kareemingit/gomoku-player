@@ -86,6 +86,8 @@ class Board:
         self.cell_to_lines: dict[int, List[BoardLine]] = {}
         self.empty_nodes: set[int] = set(range(size * size))
         self.non_empty_nodes: set[int] = set()
+        self.black_score = 0
+        self.white_score = 0
         self.black_winning_lines = 0
         self.white_winning_lines = 0
 
@@ -200,6 +202,8 @@ class Board:
         return divmod(node, self.size)
 
     def _add_line_to_cache(self, line: BoardLine):
+        self.black_score += line.evaluation[0]
+        self.white_score += line.evaluation[1]
         if line.who_is_winning == BLACK:
             self.black_winning_lines += 1
 
@@ -207,6 +211,8 @@ class Board:
             self.white_winning_lines += 1
 
     def _remove_line_from_cache(self, line: BoardLine):
+        self.black_score -= line.evaluation[0]
+        self.white_score -= line.evaluation[1]
         if line.who_is_winning == BLACK:
             self.black_winning_lines -= 1
 
@@ -260,7 +266,7 @@ class Board:
         return len(self.non_empty_nodes) == 0 and len(self.empty_nodes) == self.size * self.size
 
     def is_full(self) -> bool:
-        len(self.empty_nodes) == 0
+        return len(self.empty_nodes) == 0
 
 
     def set_piece(self, node: int, player: int):
@@ -295,21 +301,7 @@ class Board:
 
 
     def get_evaluation(self) -> List[int]:
-        black_score = 0
-        white_score = 0
-        for line in self.rows:
-            black_score += line.evaluation[0]
-            white_score += line.evaluation[1]
-
-        for line in self.columns:
-            black_score += line.evaluation[0]
-            white_score += line.evaluation[1]
-
-        for line in self.diagonals:
-            black_score += line.evaluation[0]
-            white_score += line.evaluation[1]
-
-        return [black_score, white_score]
+        return [self.black_score, self.white_score]
 
 
     def has_winner(self, player: int) -> bool:

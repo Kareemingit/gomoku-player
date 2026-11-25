@@ -5,8 +5,8 @@ import time
 
 def main():
     board = Board(15)
-    player1 = SmartPlayer(BLACK, 4)
-    player2 = SmartPlayer(WHITE, 4)
+    player1 = SmartPlayer(BLACK, 3)
+    player2 = SmartPlayer(WHITE, 3)
 
     current_player = player1
     total_time_ms = 0
