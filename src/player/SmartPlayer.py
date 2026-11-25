@@ -143,11 +143,11 @@ class SmartPlayer:
         
     def get_best_move(self, board: Board.Board) -> int:
         print(f"Getting best move for player {self.player} with depth {self.depth}")
+        candidate_moves = self._order_moves(board , self.get_candidate_moves(board , self.player) , self.player)
         if not candidate_moves:
             return None
         
         print(f"Minmax:Evaluating moves for player {self.player}...")
-        candidate_moves = self._order_moves(board , self.get_candidate_moves(board , self.player) , self.player)
         print(f"Minmax:Candidate moves: {candidate_moves}")
         print(f"Minmax:Candidate moves Count:" , {len(candidate_moves)})
         best_move = candidate_moves[0]
