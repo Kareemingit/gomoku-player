@@ -71,7 +71,7 @@ class BoardLine:
 class Board:
     def __init__(self, size: int):
         if not 5 <= size <= 15:
-            raise ValueError("Board size must be between 5 and 15.")
+            raise ValueError("Board:Board size must be between 5 and 15.")
              
         self.size = size
 

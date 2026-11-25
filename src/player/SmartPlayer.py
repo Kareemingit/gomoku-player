@@ -5,10 +5,10 @@ from src.game.Board import BoardLine as BoardLine
 class SmartPlayer:
     def __init__(self, player: int, thinking_depth: int):
         if player not in (BLACK, WHITE):
-            raise ValueError("Player must be BLACK or WHITE.")
+            raise ValueError("SmartPlayer:Player must be BLACK or WHITE.")
 
-        if thinking_depth < 1:
-            raise ValueError("Thinking depth must be at least 1.")
+        if not (1 < thinking_depth < 4):
+            raise ValueError("SmartPlayer:Thinking depth must be at least 1 and at most 3.")
         
         self.player = player
         self.depth = thinking_depth
